@@ -4,15 +4,9 @@ let min_int = 2
 let max_int = 100
 let max_threads = 50
 
-type 'a thread_queue = {
-  queue: 'a Queue.t;
-  mutex: Mutex.t;
-}
+type 'a thread_queue = { queue : 'a Queue.t; mutex : Mutex.t }
 
-let create_queue () = {
-  queue = Queue.create ();
-  mutex = Mutex.create ();
-}
+let create_queue () = { queue = Queue.create (); mutex = Mutex.create () }
 
 let enqueue tq item =
   Mutex.lock tq.mutex;
@@ -22,8 +16,7 @@ let enqueue tq item =
 let try_dequeue tq =
   Mutex.lock tq.mutex;
   let result =
-    if Queue.is_empty tq.queue then None
-    else Some (Queue.pop tq.queue)
+    if Queue.is_empty tq.queue then None else Some (Queue.pop tq.queue)
   in
   Mutex.unlock tq.mutex;
   result
@@ -36,7 +29,8 @@ let rec prime_thread index divisor =
   Printf.printf "%d\n" divisor;
   flush_all ();
 
-  let my_queue = match thread_queues.(index) with
+  let my_queue =
+    match thread_queues.(index) with
     | Some q -> q
     | None -> failwith "Queue not initialized"
   in
@@ -48,12 +42,11 @@ let rec prime_thread index divisor =
         process_loop ()
     | Some num ->
         if num = -1 then (
-          if index + 1 < max_threads then (
+          if index + 1 < max_threads then
             match thread_queues.(index + 1) with
             | Some next_queue -> enqueue next_queue (-1)
-            | None -> ()
-          )
-        ) else if num mod divisor <> 0 then (
+            | None -> ())
+        else if num mod divisor <> 0 then (
           if index + 1 < max_threads then (
             Mutex.lock handles_mutex;
             (match thread_handles.(index + 1) with
@@ -63,18 +56,14 @@ let rec prime_thread index divisor =
                 let new_thread = Thread.create (prime_thread (index + 1)) num in
                 thread_handles.(index + 1) <- Some new_thread;
                 Mutex.unlock handles_mutex;
-                enqueue new_queue num;
-            | Some _ ->
+                enqueue new_queue num
+            | Some _ -> (
                 Mutex.unlock handles_mutex;
                 match thread_queues.(index + 1) with
                 | Some next_queue -> enqueue next_queue num
-                | None -> failwith "Queue should exist"
-            );
-            process_loop ()
-          )
-        ) else (
-          process_loop ()
-        )
+                | None -> failwith "Queue should exist"));
+            process_loop ()))
+        else process_loop ()
   in
   process_loop ()
 
@@ -85,7 +74,7 @@ let () =
   thread_handles.(0) <- Some first_thread;
 
   for i = min_int to max_int - 1 do
-      enqueue first_queue i
+    enqueue first_queue i
   done;
 
   enqueue first_queue (-1);
