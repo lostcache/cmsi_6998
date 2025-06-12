@@ -3,135 +3,129 @@ with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 
 procedure Main is
 
-   Upper_Bound     : constant Positive := 100;
-   Max_Primes      : constant Positive := 25;
+   Upper_Bound : constant Positive := 100;
+   Buffer_Size : constant Positive := 10;
 
-   task type Thread_Task is
-      entry Start (Prime_Number : in Positive);
-      entry Put   (Number : in Natural);
-   end Thread_Task;
+   type Number_Buffer is array (1 .. Buffer_Size) of Natural;
 
-   type Thread_Task_Access is access Thread_Task;
 
-   type Thread_List_Node;
-   type Thread_List_Access is access Thread_List_Node;
-
-   type Thread_List_Node is record
-      Thread_Ref : Thread_Task_Access;
-      Prime_Val  : Positive;
-      Next_Node  : Thread_List_Access;
-   end record;
-
-   protected type Task_Manager is
-      procedure Add_Thread (Prime_Number : in Positive; Thread_Ref : in Thread_Task_Access);
-      procedure Get_Thread_For_Prime (Prime_Number : in Positive; Thread_Ref : out Thread_Task_Access; Found : out Boolean);
-      procedure Get_Last_Thread (Thread_Ref : out Thread_Task_Access);
-      procedure Create_New_Thread (Prime_Number : in Positive; New_Thread : out Thread_Task_Access);
+   protected type Channel is
+      entry Put (Number : in Natural);
+      entry Get (Number : out Natural);
+      function Is_Empty return Boolean;
    private
-      Thread_List_Head : Thread_List_Access := null;
-      Thread_List_Tail : Thread_List_Access := null;
-   end Task_Manager;
+      Buffer : Number_Buffer;
+      Head   : Positive := 1;
+      Tail   : Positive := 1;
+      Count  : Natural := 0;
+   end Channel;
 
-   Manager : Task_Manager;
+   type Channel_Access is access Channel;
 
-   protected body Task_Manager is
-      procedure Add_Thread (Prime_Number : in Positive; Thread_Ref : in Thread_Task_Access) is
-         New_Node : Thread_List_Access := new Thread_List_Node'(
-            Thread_Ref => Thread_Ref,
-            Prime_Val  => Prime_Number,
-            Next_Node  => null
-         );
+   protected body Channel is
+      entry Put (Number : in Natural) when Count < Buffer_Size is
       begin
-         if Thread_List_Head = null then
-            Thread_List_Head := New_Node;
-            Thread_List_Tail := New_Node;
-         else
-            Thread_List_Tail.Next_Node := New_Node;
-            Thread_List_Tail := New_Node;
-         end if;
-      end Add_Thread;
+         Buffer(Tail) := Number;
+         Tail := (Tail mod Buffer_Size) + 1;
+         Count := Count + 1;
+      end Put;
 
-      procedure Get_Thread_For_Prime (Prime_Number : in Positive; Thread_Ref : out Thread_Task_Access; Found : out Boolean) is
-         Current : Thread_List_Access := Thread_List_Head;
+      entry Get (Number : out Natural) when Count > 0 is
       begin
-         Found := False;
-         Thread_Ref := null;
+         Number := Buffer(Head);
+         Head := (Head mod Buffer_Size) + 1;
+         Count := Count - 1;
+      end Get;
 
-         while Current /= null loop
-            if Current.Prime_Val = Prime_Number then
-               Thread_Ref := Current.Thread_Ref;
-               Found := True;
-               return;
-            end if;
-            Current := Current.Next_Node;
-         end loop;
-      end Get_Thread_For_Prime;
-
-      procedure Get_Last_Thread (Thread_Ref : out Thread_Task_Access) is
+      function Is_Empty return Boolean is
       begin
-         if Thread_List_Tail /= null then
-            Thread_Ref := Thread_List_Tail.Thread_Ref;
-         else
-            Thread_Ref := null;
-         end if;
-      end Get_Last_Thread;
+         return Count = 0;
+      end Is_Empty;
+   end Channel;
 
-      procedure Create_New_Thread (Prime_Number : in Positive; New_Thread : out Thread_Task_Access) is
+
+   task type Filter_Thread is
+      entry Start (Prime_Number : in Positive; Input_Chan : in Channel_Access);
+   end Filter_Thread;
+
+   type Filter_Thread_Access is access Filter_Thread;
+
+
+   protected type Thread_Manager is
+      procedure Create_Next_Thread (Prime_Number : in Positive; Output_Chan : out Channel_Access);
+   private
+      Thread_Count : Natural := 0;
+   end Thread_Manager;
+
+   Manager : Thread_Manager;
+
+   protected body Thread_Manager is
+      procedure Create_Next_Thread (Prime_Number : in Positive; Output_Chan : out Channel_Access) is
+         New_Thread : Filter_Thread_Access;
       begin
-         New_Thread := new Thread_Task;
-         Add_Thread(Prime_Number, New_Thread);
-      end Create_New_Thread;
-   end Task_Manager;
+         Thread_Count := Thread_Count + 1;
+         Put_Line(Positive'Image(Prime_Number));
 
-   task body Thread_Task is
-      My_Prime      : Positive;
-      Next_Thread   : Thread_Task_Access;
-      Should_Stop   : Boolean := False;
+         Output_Chan := new Channel;
+         New_Thread := new Filter_Thread;
+         New_Thread.Start(Prime_Number, Output_Chan);
+      end Create_Next_Thread;
+   end Thread_Manager;
+
+
+   task body Filter_Thread is
+      My_Prime     : Positive;
+      Input_Chan   : Channel_Access;
+      Output_Chan  : Channel_Access := null;
+      Number       : Natural;
+      Should_Stop  : Boolean := False;
    begin
-      accept Start (Prime_Number : in Positive) do
+      accept Start (Prime_Number : in Positive; Input_Chan : in Channel_Access) do
          My_Prime := Prime_Number;
+         Filter_Thread.Input_Chan := Input_Chan;
       end Start;
 
       loop
          exit when Should_Stop;
 
-         accept Put (Number : in Natural) do
-            if Number = 0 then
-               if Next_Thread /= null then
-                  Next_Thread.Put(0);
-               end if;
-               Should_Stop := True;
-            elsif Number mod My_Prime /= 0 then
-               if Next_Thread = null then
-                  Put_Line(Natural'Image(Number));
+         Input_Chan.Get(Number);
 
-                  Manager.Create_New_Thread(Number, Next_Thread);
-                  Next_Thread.Start(Number);
-               end if;
-
-               if Next_Thread /= null then
-                  Next_Thread.Put(Number);
-               end if;
+         if Number = 0 then
+            if Output_Chan /= null then
+               Output_Chan.Put(0);
             end if;
-         end Put;
-      end loop;
-   end Thread_Task;
+            Should_Stop := True;
 
-   First_Thread : Thread_Task_Access;
+         elsif Number mod My_Prime /= 0 then
+            if Output_Chan = null then
+               Manager.Create_Next_Thread(Number, Output_Chan);
+            end if;
+
+            Output_Chan.Put(Number);
+
+         end if;
+      end loop;
+   end Filter_Thread;
+
+
+   First_Channel : Channel_Access := new Channel;
+   First_Thread  : Filter_Thread_Access;
 
 begin
-   Put_Line("--- START ---");
+   Put_Line("--- Start ---");
 
-   Manager.Create_New_Thread(2, First_Thread);
-   First_Thread.Start(2);
-   Put_Line(" 2");
+   First_Thread := new Filter_Thread;
+   First_Thread.Start(2, First_Channel);
 
    for I in 3 .. Upper_Bound loop
-      First_Thread.Put(I);
+      First_Channel.Put(I);
    end loop;
 
-   Put_Line("--- SENDING SHUTDOWN SIG ---");
-   First_Thread.Put(0);
+   Put_Line("--- Sending shutdown signal ---");
+   First_Channel.Put(0);
 
-   Put_Line("--- FIN ---");
+   -- TODO: implement proper shutdown
+   delay 1.0;
+
+   Put_Line("--- Finished ---");
 end Main;
