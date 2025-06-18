@@ -4,13 +4,10 @@ public class Table {
     private static final int NUM_SEATS = 5;
     private final java.util.concurrent.locks.Lock[] chopsticks =
         new java.util.concurrent.locks.ReentrantLock[NUM_CHOPSTICKS];
-    private final java.util.Queue<Order> orderInQueue =
-        new java.util.concurrent.ConcurrentLinkedQueue<>();
-    private final java.util.Queue<Order> orderOutQueue =
-        new java.util.concurrent.ConcurrentLinkedQueue<>();
     private final java.util.concurrent.ConcurrentLinkedQueue<
         Integer
     > emptySeats = new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private Restaurant restaurant = null;
 
     public Table() {
         for (int i = 0; i < chopsticks.length; i++) {
@@ -30,20 +27,8 @@ public class Table {
         emptySeats.add(seatNo);
     }
 
-    public void addToOrderOutQueue(Order order) {
-        orderOutQueue.add(order);
-    }
-
-    public void addToOrderInQueue(Order order) {
-        orderInQueue.add(order);
-    }
-
-    public Order getFromOrderInQueue() {
-        return orderInQueue.poll();
-    }
-
-    public Order getFromOrderOutQueue() {
-        return orderOutQueue.poll();
+    public void setRestaurant(Restaurant restaurant) {
+        this.restaurant = restaurant;
     }
 
     public Pair<Integer, Integer> tryGetChopsticks(Integer seatNo) {
@@ -66,24 +51,20 @@ public class Table {
         return new Pair<>(left, right);
     }
 
-    public Order queryOrder(Integer seatNo) {
-        Order order = null;
-        java.util.Iterator<Order> iterator = orderOutQueue.iterator();
-        while (iterator.hasNext()) {
-            order = iterator.next();
-            if (order.seatNo() == seatNo) {
-                iterator.remove();
-                return order;
-            }
-        }
-        return null;
-    }
-
     public void putDownChopsticks(Integer seatNo) {
+        assert seatNo != -1;
         int left = seatNo % NUM_CHOPSTICKS;
         int right = (seatNo + 1) % NUM_CHOPSTICKS;
 
         chopsticks[left].unlock();
         chopsticks[right].unlock();
+    }
+
+    public synchronized Waiter getRandomWaiter() {
+        return this.restaurant.getRandomWaiter();
+    }
+
+    public Philosopher getPhilosopher(int seatNo) {
+        return this.restaurant.getPhilosopher(seatNo);
     }
 }
