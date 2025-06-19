@@ -18,10 +18,10 @@ public class Philosopher extends Thread {
         this.table.releaseSeat(this.seatNo);
         this.seatNo = -1;
         Logger.log(
-            "Philosopher " +
+            "🚪 Philosopher " +
             this.name +
-            " leaves the table with balance " +
-            this.balance
+            " leaves the table with balance $" +
+            String.format("%.2f", this.balance)
         );
     }
 
@@ -43,18 +43,28 @@ public class Philosopher extends Thread {
     }
 
     private Order getOrderFromMenu() {
-        Logger.log(this.name + " tries to order from the seat: " + this.seatNo);
         assert (this.seatNo != -1);
 
+        if (this.cookedOrder != null) Logger.log(
+            "the order for " +
+            this.name +
+            "is supposed to be null but is " +
+            this.cookedOrder.meal()
+        );
+        assert (this.cookedOrder == null);
+
         Meal meal = Meal.getRandomMeal();
-        Order order = new Order(this.seatNo, meal, this.name);
+        Order order = new Order(this.seatNo, meal, this);
         Logger.log("📝 " + this.name + " orders " + meal);
         return order;
     }
 
     private Pair<Integer, Integer> waitAcquireChopsticks() {
         Logger.log(
-            this.name + " waits to acquire chopsticks at seat " + this.seatNo
+            "⏳ " +
+            this.name +
+            " waits to acquire chopsticks at seat " +
+            this.seatNo
         );
         assert (this.seatNo != -1);
 
@@ -66,34 +76,19 @@ public class Philosopher extends Thread {
             }
         }
 
-        Logger.log(this.name + " acquires chopsticks " + chopsticks);
+        Logger.log("🥢 " + this.name + " acquires chopsticks " + chopsticks);
         return chopsticks;
     }
 
-    private boolean waitForOrder(Order order) {
-        long startTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() - startTime < 2000) {
-            while (this.order == null) {
-                Thread.yield();
-                continue;
-            }
-
-            if (this.order.isRefunded()) {
-                Logger.log(
-                    this.name + " got refund for the order " + this.order.meal()
-                );
-                this.balance += 5;
-                return false;
-            }
-
-            return true;
+    private void waitForPlacedOrder() {
+        while (this.cookedOrder == null) {
+            Thread.yield();
+            continue;
         }
-
-        return false;
     }
 
     private void eat() {
-        System.out.println("🍴 " + this.name + " eating " + order.meal());
+        System.out.println("🍴 " + this.name + " eating " + cookedOrder.meal());
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -107,12 +102,12 @@ public class Philosopher extends Thread {
     }
 
     private void payForMeal() {
-        this.balance -= this.order.price();
+        this.balance -= this.cookedOrder.price();
         System.out.println(
             "💳 " +
             this.name +
             " paid $" +
-            this.order.price() +
+            this.cookedOrder.price() +
             " (balance: $" +
             String.format("%.2f", this.balance) +
             ")"
@@ -143,22 +138,38 @@ public class Philosopher extends Thread {
 
     private void takeSeatAtTheTable() {
         assert this.seatNo == -1;
+        if (this.cookedOrder != null) {
+            Logger.log(
+                "the order is supposed to be null " +
+                this.cookedOrder.meal() +
+                " for " +
+                this.name
+            );
+        }
+        assert this.cookedOrder == null;
         int seatNo = this.table.requestSeat();
         assert seatNo != -1;
         this.seatNo = seatNo;
+        Logger.log(this.name + " takes seat " + seatNo);
     }
 
     private boolean tryToGiveOrderToRandomWaiter(Order order) {
+        assert this.cookedOrder == null;
+        assert this.seatNo != -1;
+
         long startTime = System.currentTimeMillis();
         while (System.currentTimeMillis() - startTime < 2000) {
-            Waiter waiter = this.table.getRandomWaiter();
+            Waiter waiter = this.table.getRandomAvailableWaiter();
             if (waiter == null) {
                 Thread.yield();
                 continue;
             }
 
             Logger.log(
-                this.name + " tries to give order to waiter: " + waiter.name()
+                "🤝 " +
+                this.name +
+                " tries to give order to waiter: " +
+                waiter.name()
             );
 
             waiter.takeOrder(order);

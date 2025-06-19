@@ -16,7 +16,9 @@ public class Chef extends Thread {
             return false;
         }
 
-        Logger.log("Order: " + order.meal() + " assigned to chef " + this.name);
+        Logger.log(
+            "👨‍🍳 Order: " + order.meal() + " assigned to chef " + this.name
+        );
         this.job = order;
         return true;
     }
@@ -41,11 +43,18 @@ public class Chef extends Thread {
             " cooked " +
             this.job.meal() +
             " for philosopher " +
-            this.job.orderedBy()
+            this.job.orderedBy().name()
         );
     }
 
     private void putOnKitchenCounterAndIncrementOrderCounter() {
+        Logger.log(
+            "👨‍🍳 Chef " +
+            this.name +
+            " put order " +
+            this.job.meal() +
+            " on kitchen counter"
+        );
         this.kitchen.addToKitchenOutQueue(this.job);
         this.job = null;
         this.completedOrders++;
@@ -85,6 +94,6 @@ public class Chef extends Thread {
             this.takeCoffeeBreakIfItsTime();
         }
 
-        Logger.log(this.name + "leaving for the day");
+        Logger.log("🏠 " + this.name + " leaving for the day");
     }
 }
