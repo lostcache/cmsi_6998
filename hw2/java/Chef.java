@@ -24,8 +24,17 @@ public class Chef extends Thread {
     }
 
     private void waitForOrder() {
-        while (this.job == null) {
-            Thread.yield();
+        while (
+            this.job == null &&
+            this.running &&
+            !Thread.currentThread().isInterrupted()
+        ) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
     }
 
@@ -89,9 +98,18 @@ public class Chef extends Thread {
     public void run() {
         while (this.running && !Thread.currentThread().isInterrupted()) {
             this.waitForOrder();
-            this.cook();
-            this.putOnKitchenCounterAndIncrementOrderCounter();
-            this.takeCoffeeBreakIfItsTime();
+
+            // Check if we exited waitForOrder due to shutdown
+            if (!this.running || Thread.currentThread().isInterrupted()) {
+                break;
+            }
+
+            // Only proceed if we actually have a job
+            if (this.job != null) {
+                this.cook();
+                this.putOnKitchenCounterAndIncrementOrderCounter();
+                this.takeCoffeeBreakIfItsTime();
+            }
         }
 
         Logger.log("🏠 " + this.name + " leaving for the day");
