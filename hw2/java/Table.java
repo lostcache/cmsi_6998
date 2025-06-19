@@ -60,8 +60,8 @@ public class Table {
         chopsticks[right].unlock();
     }
 
-    public synchronized Waiter getRandomWaiter() {
-        return this.restaurant.getRandomWaiter();
+    public synchronized Waiter getRandomAvailableWaiter() {
+        return this.restaurant.getRandomAvailableWaiter();
     }
 
     public Philosopher getPhilosopher(int seatNo) {

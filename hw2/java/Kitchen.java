@@ -18,7 +18,7 @@ public class Kitchen {
         return kitchenOutQueue.poll();
     }
 
-    public Chef getRandomChef() {
-        return this.restaurant.getRandomChef();
+    public Chef getRandomAvailableChef() {
+        return this.restaurant.getRandomAvailableChef();
     }
 }

@@ -1,72 +1,61 @@
 public class Waiter extends Thread {
 
     private final String name;
-    private Table table;
     private Kitchen kitchen;
     private volatile boolean running = true;
     private volatile Order carryingOrder = null;
 
     public Waiter(Table table, Kitchen kitchen, String name) {
         this.name = name;
-        this.table = table;
         this.kitchen = kitchen;
     }
 
-    public synchronized boolean takeOrder(Order newOrder) {
+    public synchronized void takeOrder(Order newOrder) {
         assert newOrder != null;
         assert this.carryingOrder == null;
 
         this.carryingOrder = newOrder;
-        Logger.log("Waiter " + this.name + " took order " + newOrder.meal());
-        return this.carryingOrder != null;
+        Logger.log("📋 Waiter " + this.name + " took order " + newOrder.meal());
     }
 
     public boolean tryRelayOrderToRandomChef() {
-        long startTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() - startTime < 1000) {
-            Chef chef = kitchen.getRandomChef();
-            if (chef == null) {
-                Thread.yield();
-                continue;
-            }
-
-            chef.assignOrder(this.carryingOrder);
-            return true;
+        Logger.log("🔍 Waiter " + this.name + " looking for available chef");
+        Chef chef = kitchen.getRandomAvailableChef();
+        if (chef == null) {
+            Logger.log("❌ Waiter " + this.name + " found no available chefs");
+            return false;
         }
 
         Logger.log(
-            "Waiter " +
-            this.name +
-            "cound not assign order: " +
-            this.carryingOrder.meal() +
-            " to any chef"
+            "🤝 Waiter " + this.name + " hands off order to chef " + chef.name()
         );
-        return false;
+        chef.assignOrder(this.carryingOrder);
+        return true;
     }
 
     public void serveOrderAtTable() {
         assert this.carryingOrder != null;
-        Philosopher philosopher = table.getPhilosopher(
-            this.carryingOrder.seatNo()
-        );
+        Philosopher philosopher = this.carryingOrder.orderedBy();
         assert philosopher != null;
-        philosopher.serveOrder(this.carryingOrder);
+        while (philosopher.isBusy()) Thread.yield();
         Logger.log(
-            "Waiter " +
+            "🍽️ Waiter " +
             this.name +
             " served order " +
             this.carryingOrder.meal() +
             " to philosopher " +
             philosopher.name()
         );
+        philosopher.serveOrder(this.carryingOrder);
     }
 
-    public void waitForOrder() {
+    public void waitForOrderFromPhilosophers() {
         long startTime = System.currentTimeMillis();
-        while (startTime + 2000 < System.currentTimeMillis()) {
-            if (this.carryingOrder == null) {
-                Thread.yield();
+        while (System.currentTimeMillis() - startTime < 2000) {
+            if (this.carryingOrder != null) {
+                return;
             }
+            Thread.yield();
         }
     }
 
@@ -94,17 +83,18 @@ public class Waiter extends Thread {
     @Override
     public void run() {
         while (running && !Thread.currentThread().isInterrupted()) {
-            this.waitForOrder();
+            this.waitForOrderFromPhilosophers();
 
             if (this.carryingOrder != null) {
                 Logger.log(
+                    "📨 " +
                     this.name +
                     " receives order for " +
                     this.carryingOrder.meal()
                 );
 
-                boolean success = this.tryRelayOrderToRandomChef();
-                if (!success) {
+                boolean orderAssigned = this.tryRelayOrderToRandomChef();
+                if (!orderAssigned) {
                     this.markOrderAsRefund();
                     this.serveOrderAtTable();
                 }
@@ -113,9 +103,19 @@ public class Waiter extends Thread {
 
             this.carryingOrder = this.checkForCookedOrderAtKitchenCounter();
 
-            if (this.carryingOrder != null) this.serveOrderAtTable();
+            if (this.carryingOrder != null) {
+                Logger.log(
+                    "🍽️ Waiter " +
+                    this.name +
+                    " picked up order " +
+                    this.carryingOrder.meal() +
+                    " from kitchen counter"
+                );
+                this.serveOrderAtTable();
+            }
+            this.carryingOrder = null;
         }
 
-        Logger.log(this.name + "leaving for the day");
+        Logger.log("🏠 " + this.name + " leaving for the day");
     }
 }

@@ -1,22 +1,16 @@
 public class Order {
 
     private boolean refunded = false;
-    private int seatNo;
     private Meal meal;
-    private String orderedBy;
+    private Philosopher orderedBy;
 
-    public Order(int seatNo, Meal meal, String orderedBy) {
-        this.seatNo = seatNo;
+    public Order(int seatNo, Meal meal, Philosopher orderedBy) {
         this.meal = meal;
         this.orderedBy = orderedBy;
     }
 
     public double price() {
         return meal.price();
-    }
-
-    public int seatNo() {
-        return this.seatNo;
     }
 
     public void markAsRefund() {
@@ -31,7 +25,7 @@ public class Order {
         return this.meal;
     }
 
-    public String orderedBy() {
+    public Philosopher orderedBy() {
         return this.orderedBy;
     }
 }

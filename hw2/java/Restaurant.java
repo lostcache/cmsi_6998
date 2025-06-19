@@ -96,7 +96,7 @@ public class Restaurant {
         }
     }
 
-    public synchronized Chef getRandomChef() {
+    public synchronized Chef getRandomAvailableChef() {
         int randomIndex = (int) (Math.random() * this.chefs.length);
         Chef chef = this.chefs[randomIndex];
         if (chef.isBusy()) {
@@ -105,7 +105,7 @@ public class Restaurant {
         return chef;
     }
 
-    public synchronized Waiter getRandomWaiter() {
+    public synchronized Waiter getRandomAvailableWaiter() {
         int randomIndex = (int) (Math.random() * this.waiters.length);
         Waiter waiter = this.waiters[randomIndex];
         if (waiter.isBusy()) {

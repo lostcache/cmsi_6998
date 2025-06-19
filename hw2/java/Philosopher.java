@@ -4,7 +4,7 @@ public class Philosopher extends Thread {
     private double balance;
     private Table table;
     private int seatNo = -1;
-    private volatile Order order = null;
+    private volatile Order cookedOrder = null;
 
     public Philosopher(Table table, String name) {
         this.name = name;
@@ -128,7 +128,7 @@ public class Philosopher extends Thread {
         return true;
     }
 
-    private void think(long interval) {
+    private void philosophize(long interval) {
         try {
             Thread.sleep(interval);
         } catch (InterruptedException e) {
@@ -180,11 +180,17 @@ public class Philosopher extends Thread {
     }
 
     public void serveOrder(Order order) {
-        this.order = order;
+        assert order != null;
+        assert this.seatNo != -1;
+        this.cookedOrder = order;
     }
 
     public String name() {
         return this.name;
+    }
+
+    public boolean isBusy() {
+        return this.cookedOrder != null;
     }
 
     @Override
@@ -193,12 +199,13 @@ public class Philosopher extends Thread {
             this.hasEnoughBalance() && !Thread.currentThread().isInterrupted()
         ) {
             this.takeSeatAtTheTable();
-            this.think((long) (Math.random() * 1000 + 500));
+            this.philosophize((long) (Math.random() * 1000 + 500));
 
             Order order = this.getOrderFromMenu();
             boolean success = this.tryToGiveOrderToRandomWaiter(order);
             if (!success) {
                 Logger.log(
+                    "❌ " +
                     this.name +
                     " failed to give order to waiter, leaving table temporarily"
                 );
@@ -206,21 +213,28 @@ public class Philosopher extends Thread {
                 continue;
             }
 
-            success = this.waitForOrder(order);
-            if (!success) {
+            this.waitForPlacedOrder();
+            if (this.cookedOrder.isRefunded()) {
                 Logger.log(
-                    "Order failed, was refunded, leaving with refund of $5"
+                    "💰 " +
+                    this.name +
+                    " got refund for the order " +
+                    this.cookedOrder.meal()
                 );
-                this.leaveForInterval((long) (1000));
+                this.balance += 5;
+                this.cookedOrder = null;
+                this.leaveForInterval((long) 1000);
                 continue;
             }
-            Logger.log(this.name + " got order: " + order.meal());
 
+            Logger.log(
+                "✅ " + this.name + " got order: " + this.cookedOrder.meal()
+            );
             this.waitAcquireChopsticks();
-
             this.eat();
             this.putDownChopsticks();
             this.payForMeal();
+            this.cookedOrder = null;
             this.leaveForInterval((long) (Math.random() * 1000 + 500));
         }
 
