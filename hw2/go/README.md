@@ -1,125 +1,78 @@
-# 🍽️ Dining Philosophers Restaurant Simulation (Go)
+# README
 
-This project is a concurrent simulation of a restaurant based on the **Dining Philosophers Problem**, written in Go. It models realistic restaurant behavior using goroutines and channels to coordinate philosophers (customers), waiters, and chefs in a synchronized environment.
+## Description
 
-## 🧩 Problem Modeled
+This project simulates a restaurant environment where philosophers (customers) order meals, waiters take and serve orders, and chefs cook the meals. The simulation involves multiple threads representing philosophers, waiters, and chefs, each performing their respective tasks concurrently. The goal is to demonstrate the interactions between these entities while ensuring proper synchronization and handling of concurrent operations.
 
-This simulation extends the classic _Dining Philosophers_ problem with a richer ecosystem:
+## Technologies Used
 
-- **Philosophers** represent customers who arrive, order food, eat, and leave.
-- **Waiters** act as intermediaries between philosophers and chefs, handling orders.
-- **Chefs** prepare meals and place them on a shared kitchen counter.
-- **A kitchen counter** acts as a buffer between the chefs and waiters.
-- **A seating system** ensures limited seat availability at the restaurant.
+- **Go**: The primary programming language used for implementing the simulation.
+- **Go Concurrency**: Utilizes Go's goroutines and channels to manage concurrent operations and ensure thread safety.
 
-## 🔧 Features
+## Getting Started
 
-- Fully concurrent using Go's goroutines and channels
-- Order queue and food preparation logic with refund handling
-- Graceful shutdown of waiters and chefs
-- Simulated money balance for philosophers
-- Simulated time delays for cooking, eating, and waiter interactions
+### Prerequisites
 
-## 🏗️ Architecture
+- **Go**: Ensure you have Go installed on your machine. You can download it from [the official Go website](https://golang.org/dl/).
+- **Command Line Interface (CLI)**: Basic familiarity with using the command line for compiling and running Go programs.
 
+### Cloning the Repository
+
+1. Open your terminal or command prompt.
+2. Navigate to the directory where you want to clone the repository.
+3. Run the following command to clone the repository:
+
+```bash
+git clone git@github.com:lostcache/cmsi_6998.git
 ```
 
+### Running the Project
+
+1. Navigate to the cloned repository directory:
+
+```bash
+cd cmsi_6998/hw2/go
 ```
 
-            +------------------+
-            |   Restaurant     |
-            +------------------+
-             |        |       |
-
-+-----------+ +--+--+ ++--+
-| | | | |
-
-```
-
-+----v---+       +-----v+ +--v--+v--+v--+
-\| Phil 1 |       | Waiter 1 |  Chef 1  |
-\| Phil 2 |       | Waiter 2 |  Chef 2  |
-\|  ...   |       |    ...   |  Chef 3  |
-+--------+       +----------+----------+
-
-```
-
-- **Philosophers** place orders → **Waiters** collect & pass to **Chefs**
-- **Chefs** cook → place on **kitchen counter** → **Waiters** serve
-
-## 🚀 How to Run
-
-### Requirements
-
-- Go 1.20+ (tested with Go 1.22)
-
-### Build and Execute
+2. Build the project using the following command:
 
 ```bash
 go build -o restaurant .
+```
+
+3. Run the executable:
+
+```bash
 ./restaurant
 ```
 
-Or, if you have a `run.sh`:
+Alternatively, you can use the provided `run.sh` script:
 
 ```bash
 ./run.sh
 ```
 
-### Output
+### Expected Output
 
-Logs will be printed to the console, simulating restaurant activity:
+The simulation will start, and you will see logs printed to the console indicating the actions performed by philosophers, waiters, and chefs. The simulation will continue until all philosophers have either run out of money or the program is manually terminated.
 
-- Philosopher actions
-- Waiter/chef interactions
-- Payments and refunds
-- Shutdown and deadlock checks
+### Project Structure
 
-## 📁 Project Structure
+- **assert.go**: Provides an assertion function to panic if a condition is not met.
+- **chef.go**: Represents a chef who cooks meals.
+- **logger.go**: Provides logging functions to print messages to the console.
+- **main.go**: The entry point of the simulation.
+- **meal.go**: Defines the different meals available in the restaurant.
+- **order.go**: Represents an order placed by a philosopher.
+- **philosopher.go**: Represents a philosopher who orders meals and eats.
+- **restaurant.go**: Manages the overall restaurant operations, including starting and shutting down the simulation.
+- **table.go**: Manages the seating and chopsticks for philosophers.
+- **waiter.go**: Represents a waiter who takes orders from philosophers and serves cooked meals.
 
-```
-.
-├── main.go            # Entry point
-├── restaurant.go      # Core restaurant logic
-├── philosopher.go     # Philosopher behavior
-├── waiter.go          # Waiter logic
-├── chef.go            # Chef logic
-├── order.go           # Order structure & meals
-├── util.go            # Logging, assertions
-├── run.sh             # Startup script
-```
+### Contributing
 
-## 🧠 Concurrency Concepts Used
+Contributions to this project are welcome. If you find any issues or have suggestions for improvements, please feel free to open an issue or submit a pull request.
 
-- Goroutines for each Philosopher, Waiter, and Chef
-- Buffered and unbuffered channels
-- Select statement with timeout and shutdown
-- WaitGroups for graceful termination
-- Avoiding deadlocks and starvation
+### License
 
-## 🧪 Example Meals
-
-A few of the meals used in simulation:
-
-- `Sambal_Goreng_Udang`
-- `Spanokopita`
-- `Paella`
-- `Moui_Nagden`
-- `Wu_Hsiang_Chi`
-- `Bogrács_Gulyás`
-
-## 📚 Learnings
-
-This project is ideal for understanding:
-
-- Synchronization between multiple producer-consumer roles
-- Realistic resource contention (limited seats, chefs)
-- Proper use of Go's `select`, `chan`, and `sync.WaitGroup`
-
-## 📄 License
-
-This project is for educational purposes. No license attached yet.
-
----
-
-> Made with 🧠, 🍜, and `go run` by \[Your Name]
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
